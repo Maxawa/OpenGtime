@@ -6,6 +6,7 @@
 #include <math.h>
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
+int frameCount = -5;
 float horizontalInput, verticalInput, upInput;
 float moveSpeed = 5.0f;
 float sensitivity = 1.0f;
@@ -15,6 +16,7 @@ double deltaMouseX, deltaMouseY;
 float cameraLocation[3] = { 0.0f, 0.0f, -10.0f };
 float cameraDirection[3] = { 0.0f, 0.0f, 1.0f };
 float lightLocation[3] = { 0.0f, 5.0f, 10.0f };
+int texWidth, texHeight, nrChannels;
 void framebuffer_size_callback(GLFWwindow* window, int width, int height)
 {
 	glViewport(0, 0, width, height);
@@ -102,15 +104,21 @@ void processMouseInput(GLFWwindow* window, double deltaTime) {
 	deltaMouseY =  ypos - oldMouseYpos;
 	oldMouseXpos = xpos;
 	oldMouseYpos = ypos;
-	//std::cout << deltaMouseX << " " << deltaMouseY << std::endl;
+	float yAngle = acos(cameraDirection[1]);
+	double rotateYAngle;
 	// Convert mouse movements to rotation angles
-	double rotateSpeed = deltaTime*sensitivity;
+	double rotateSpeed = 0.0017*sensitivity;
 	double rotateXAngle = deltaMouseY * rotateSpeed;
-	double rotateYAngle = deltaMouseX * rotateSpeed;
-
+	rotateYAngle = deltaMouseX * rotateSpeed;
+	if (frameCount <= 0) {
+		rotateXAngle = 0;
+		rotateYAngle = 0;
+	}
 	// Perform rotation around X and Y axes
-	rotateX(cameraDirection, rotateXAngle);
+	
 	rotateY(cameraDirection, rotateYAngle);
+	
+	rotateX(cameraDirection, rotateXAngle);
 }
 void processKeyboardInput(GLFWwindow* window)
 {
@@ -163,13 +171,60 @@ int main() {
 		return -1;
 	}
 	//the actually important bit
-	Shader mainShader("vertex.vs", "fragment.fs");
+	glEnable(GL_TEXTURE_2D);
+	Shader mainShader("vertex.vs", "alternatefragment.fs");
+	unsigned int texture, normaltexture, heighttexture;
+	glActiveTexture(GL_TEXTURE0); 
+	glGenTextures(1, &texture);
+	glBindTexture(GL_TEXTURE_2D, texture);
+	// set the texture wrapping/filtering options (on the currently bound texture object)
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+	
+	unsigned char* data = stbi_load("C:\\Users\\sanul\\Documents\\openg\\OpenGtime\\textures\\wave_albedo.png", &texWidth, &texHeight, &nrChannels, 4);
 
-	/*float vertices[] = {
-	-0.5f, -0.5f, 0.0f, 1.0f, 0.0f, 0.0f,
-	 0.5f, -0.5f, 0.0f, 0.0f, 1.0f, 0.0f,
-	 0.0f,  0.5f, 0.0f, 0.0f, 0.0f, 1.0f
-	};*/
+	if (data)
+	{
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, texWidth, texHeight, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
+		glGenerateMipmap(GL_TEXTURE_2D);
+	}
+	else
+	{
+		std::cout << "Failed to load texture" << std::endl;
+	}
+	
+	int normwidth, normheight, channels;
+	glActiveTexture(GL_TEXTURE1);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+	glGenTextures(1, &normaltexture);
+	glBindTexture(GL_TEXTURE_2D, normaltexture);
+	data = stbi_load("C:\\Users\\sanul\\Documents\\openg\\OpenGtime\\textures\\wave_normal.png", &normwidth, &normheight, &channels, 4);
+	if (data)
+	{
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, normwidth, normheight, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
+		glGenerateMipmap(GL_TEXTURE_2D);
+	}
+	else
+	{
+		std::cout << "Failed to load texture" << std::endl;
+	}
+	
+	glActiveTexture(GL_TEXTURE2);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+	glGenTextures(1, &heighttexture);
+	glBindTexture(GL_TEXTURE_2D, heighttexture);
+	data = stbi_load("C:\\Users\\sanul\\Documents\\openg\\OpenGtime\\textures\\wave_height.png", &normwidth, &normheight, &channels, 4);
+	if (data)
+	{
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, normwidth, normheight, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
+		glGenerateMipmap(GL_TEXTURE_2D);
+	}
+	else
+	{
+		std::cout << "Failed to load texture" << std::endl;
+	}
 	float quad[] = {
 	-1.0f, 1.0f, 0.0f,
 	1.0f, 1.0f, 0.0f,
@@ -215,7 +270,7 @@ int main() {
 	//main loop
 	while (!glfwWindowShouldClose(window)) {
 		//input
-
+		frameCount += 1;
 		double _Time = glfwGetTime();
 		double deltaTime = _Time - prevTime;
 		processMouseInput(window, deltaTime);
@@ -250,16 +305,28 @@ int main() {
 
 		//rendering
 
-		glClearColor(0.2f,0.0f,0.0f, 1.0f); //background
-		glClear(GL_COLOR_BUFFER_BIT);
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, texture);
+		glActiveTexture(GL_TEXTURE1);
+		glBindTexture(GL_TEXTURE_2D, normaltexture);
+		glActiveTexture(GL_TEXTURE2);
+		glBindTexture(GL_TEXTURE_2D, heighttexture);
 		mainShader.use();	
 		glGetIntegerv(GL_VIEWPORT, m_viewport);
 		mainShader.setVector2("windowDimensions", m_viewport[2],m_viewport[3]);
 		mainShader.setVector3("cameraLocation", cameraLocation);
 		mainShader.setVector3("cameraDirection", cameraDirection);
-		lightLocation[0] = 3 * sin(2*_Time);
-		lightLocation[1] = 5 * sin(_Time);
-		lightLocation[2] = 3 * cos(3*_Time) + 10.0f;
+		mainShader.setInt("SphereTexture", 0);
+		mainShader.setInt("NormalTexture", 1);
+		mainShader.setInt("HeightTexture", 2);
+		float lightSpeed = 0.5;
+		lightLocation[0] = 2 * sin(lightSpeed*_Time);
+		//lightLocation[0] = 0;
+		lightLocation[1] = 2 * sin(1.5*lightSpeed*_Time);
+		//lightLocation[1] = 2.5;
+		lightLocation[2] = 2 * cos(lightSpeed*_Time) + 10.0f;
+		//lightLocation[2] = 10.0;
+
 		mainShader.setVector3("lightLocation", lightLocation);
 		glBindVertexArray(VAO);
 		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);

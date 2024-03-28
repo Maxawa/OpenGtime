@@ -145,6 +145,7 @@
     <ClInclude Include="stb_image.h" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="alternatefragment.fs" />
     <None Include="fragment.fs" />
     <None Include="vertex.vs" />
   </ItemGroup>

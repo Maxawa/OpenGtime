@@ -36,5 +36,8 @@
     <None Include="fragment.fs">
       <Filter>shaders</Filter>
     </None>
+    <None Include="alternatefragment.fs">
+      <Filter>shaders</Filter>
+    </None>
   </ItemGroup>
 </Project>
